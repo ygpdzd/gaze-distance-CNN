@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Text;
 using ViveSR.anipal.Eye;
+using ViveSR;
 using System.Globalization;
 
 public class SaveTracking : MonoBehaviour
@@ -96,13 +97,40 @@ public class SaveTracking : MonoBehaviour
 
     public void Calibrate()
     {
-        Debug.Log("Starting eye tracking calibration");
+        Debug.Log("[EyeTracking] Starting eye tracking calibration");
         switch (etprovider)
         {
             case ETProvider.HTCViveSRanipal:
-                SRanipal_Eye.LaunchEyeCalibration();
+                if (SRanipal_Eye_Framework.Status != SRanipal_Eye_Framework.FrameworkStatus.WORKING)
+                {
+                    Debug.LogError("[EyeTracking] Calibration skipped because SRanipal status is " +
+                        SRanipal_Eye_Framework.Status + ". Start SteamVR/Vive Console and SR_Runtime first.");
+                    return;
+                }
+
+                try
+                {
+                    bool isViveProEye = SRanipal_Eye_API.IsViveProEye();
+                    Debug.Log("[EyeTracking] IsViveProEye: " + isViveProEye);
+
+                    Error result = (Error)SRanipal_Eye_API.LaunchEyeCalibration(IntPtr.Zero);
+                    if (result == Error.WORK)
+                    {
+                        Debug.Log("[EyeTracking] Eye calibration launched successfully.");
+                    }
+                    else
+                    {
+                        Debug.LogError("[EyeTracking] Eye calibration failed. Result: " + result +
+                            " (" + (int)result + "). Check SR_Runtime, SteamVR, and the Vive Pro Eye connection.");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError("[EyeTracking] Eye calibration call threw an exception: " + exception.Message);
+                }
                 break;
             default:
+                Debug.LogWarning("[EyeTracking] Calibration is not implemented for provider " + etprovider + ".");
                 break;
         }
     }

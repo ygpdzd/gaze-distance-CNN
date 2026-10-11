@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using ViveSR.anipal.Eye;
 
 public class ExperimentManager : MonoBehaviour
 {
@@ -25,6 +26,8 @@ public class ExperimentManager : MonoBehaviour
     public bool developerMode = true;
     public bool conditionalTargetPresentation = true;
     [SerializeField] bool calibration = true;
+
+    private Coroutine calibrationCoroutine;
     
 
     // Start is called before the first frame update
@@ -49,11 +52,50 @@ public class ExperimentManager : MonoBehaviour
     {
         if (calibration)
         {
-            saveTracking.Calibrate();
+            calibrationCoroutine = StartCoroutine(CalibrateWhenReady());
         }
-        showTargets.startExperiment = true;
-        
+        else
+        {
+            showTargets.startExperiment = true;
+        }
 
+    }
+
+    private IEnumerator CalibrateWhenReady()
+    {
+        const float timeoutSeconds = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeoutSeconds)
+        {
+            SRanipal_Eye_Framework.FrameworkStatus status =
+                SRanipal_Eye_Framework.Status;
+
+            if (status == SRanipal_Eye_Framework.FrameworkStatus.WORKING)
+            {
+                saveTracking.Calibrate();
+                showTargets.startExperiment = true;
+                calibrationCoroutine = null;
+                yield break;
+            }
+
+            if (status == SRanipal_Eye_Framework.FrameworkStatus.ERROR ||
+                status == SRanipal_Eye_Framework.FrameworkStatus.NOT_SUPPORT)
+            {
+                Debug.LogError("[EyeTracking] SRanipal cannot be used. Framework status: " + status +
+                    ". The experiment was not started.");
+                calibrationCoroutine = null;
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        Debug.LogError("[EyeTracking] Timed out waiting for SRanipal. Current status: " +
+            SRanipal_Eye_Framework.Status +
+            ". Start SteamVR/Vive Console and SR_Runtime, then restart the scene.");
+        calibrationCoroutine = null;
     }
     // Update is called once per frame
     void Update()
@@ -64,7 +106,10 @@ public class ExperimentManager : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Return))
             {
                 saveTracking.Msg("Recalibration");
-                saveTracking.Calibrate();
+                if (calibrationCoroutine == null)
+                {
+                    calibrationCoroutine = StartCoroutine(CalibrateWhenReady());
+                }
             }
 
         }
