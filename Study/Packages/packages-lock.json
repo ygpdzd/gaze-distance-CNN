@@ -1,14 +1,5 @@
 {
   "dependencies": {
-    "com.htc.upm.wave.xrsdk": {
-      "version": "5.6.0-r.10.2",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.xr.management": "3.2.4"
-      },
-      "url": "https://npm-registry.vive.com"
-    },
     "com.unity.burst": {
       "version": "1.8.12",
       "depth": 1,
@@ -346,16 +337,6 @@
         "com.unity.xr.core-utils": "2.1.1"
       },
       "url": "https://packages.unity.com"
-    },
-    "com.varjo.xr": {
-      "version": "https://github.com/varjocom/VarjoUnityXRPlugin.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.xr.management": "4.4.0",
-        "com.unity.xr.arfoundation": "5.1.0"
-      },
-      "hash": "7f0cd9a93511d388dd1bad8e2dbb90a37984fedf"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",

@@ -6,17 +6,15 @@ using System.IO;
 using System.Threading;
 using System.Text;
 using ViveSR.anipal.Eye;
-using Varjo.XR;
 using System.Globalization;
 
 public class SaveTracking : MonoBehaviour
 {
     public enum ETProvider
     {
-        HTCViveSRanipal,
-        Varjo,
-        PupilNeon,
-        MetaQuest
+        HTCViveSRanipal = 0,
+        PupilNeon = 2,
+        MetaQuest = 3
     }
     public ETProvider etprovider = ETProvider.HTCViveSRanipal;
     //public GameObject trackedGameobject;
@@ -104,9 +102,6 @@ public class SaveTracking : MonoBehaviour
             case ETProvider.HTCViveSRanipal:
                 SRanipal_Eye.LaunchEyeCalibration();
                 break;
-            case ETProvider.Varjo:
-                VarjoEyeTracking.RequestGazeCalibration();
-                break;
             default:
                 break;
         }
@@ -150,16 +145,6 @@ public class SaveTracking : MonoBehaviour
                 combinedEyeGaze = eyeData.combined.eye_data.gaze_direction_normalized;
                 combinedEyeGaze.x *= -1;
                 gazeDistance = eyeData.combined.convergence_distance_mm * 0.001f;
-                break;
-            case ETProvider.Varjo:
-                VarjoEyeTracking.GazeData gazeData = VarjoEyeTracking.GetGaze();
-                leftEyeOrigin = gazeData.left.origin;
-                rightEyeOrigin = gazeData.right.origin;
-                leftEyeGaze = gazeData.left.forward;
-                rightEyeGaze = gazeData.right.forward;
-                combinedEyeOrigin = gazeData.gaze.origin;
-                combinedEyeGaze = gazeData.gaze.forward;
-                gazeDistance = gazeData.focusDistance;
                 break;
             default:
                 leftEyeOrigin = -Vector3.forward;

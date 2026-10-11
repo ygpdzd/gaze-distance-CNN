@@ -172,3 +172,34 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+
+# Unity generated solution files
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+# Unity generated data
+*.pidb.meta
+*.pdb
+*.mdb
+
+# Local experiment outputs
+Study/metadata_*.csv
+Study/tracking_data_*.csv
+
+# Local IDE settings
+Study/.vscode/file-remark.json
