@@ -2,6 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR;
+using InputSystemButtonControl = UnityEngine.InputSystem.Controls.ButtonControl;
+using XRInputDevice = UnityEngine.XR.InputDevice;
+using XRCommonUsages = UnityEngine.XR.CommonUsages;
 using System.IO;
 using System;
 using TMPro;
@@ -75,6 +79,8 @@ public class ShowTargets : MonoBehaviour
     [HideInInspector] public string filename;
 
     Gamepad gamepad;
+    private XRInputDevice leftController;
+    private XRInputDevice rightController;
     public int counter = 0;
     private bool isLeft = true;
     private Coroutine coroutine;
@@ -84,10 +90,10 @@ public class ShowTargets : MonoBehaviour
     void Start()
     {
 
-        gamepad = Gamepad.current;
-        if(gamepad == null)
+        RefreshInputDevices();
+        if (gamepad == null && !leftController.isValid && !rightController.isValid)
         {
-            Debug.LogError("No Controller found.");
+            Debug.LogWarning("[Input] No Gamepad or XR controller found yet. Using keyboard fallback until a controller is detected.");
         }
         saveTracking = FindObjectOfType<SaveTracking>();
         gazeEstimation = FindObjectOfType<GazeEstimation>();
@@ -125,15 +131,18 @@ public class ShowTargets : MonoBehaviour
 
         }
         
-        // save participant reactions
-        if (gamepad.leftTrigger.ReadValue() >= 0.95f)
+        RefreshInputDevices();
+
+        // Save participant reactions. Vive controllers are exposed as XR InputDevices,
+        // not as UnityEngine.InputSystem.Gamepad instances.
+        if (IsLeftTriggerPressed())
         {
             endTime = Time.time;
             keyHit = true;
             correctAnswer = (isLeft && condition == 0) || (!isLeft && condition == 1);
         }
 
-        if (gamepad.rightTrigger.ReadValue() >= 0.95f)
+        if (IsRightTriggerPressed())
         {
             endTime = Time.time;
             keyHit = true;
@@ -150,12 +159,12 @@ public class ShowTargets : MonoBehaviour
         // additional options if developer mode is running
         if (experimentManager.developerMode)
         {
-            if (gamepad.xButton.ReadValue() >= 0.95)
+            if (IsLeftPrimaryPressed())
             {
                 saveTracking.Msg("Remove target");
                 saveMetaData.Msg("Remove target");
             }
-            if (gamepad.yButton.ReadValue() >= 0.95)
+            if (IsLeftSecondaryPressed())
             {
                 skipCurrentTarget = true;
                 saveTracking.Msg("Skip target");
@@ -163,6 +172,81 @@ public class ShowTargets : MonoBehaviour
                 saveMetaData.Msg("Skip target");
             }
         }
+    }
+
+    private void RefreshInputDevices()
+    {
+        if (gamepad == null)
+        {
+            gamepad = Gamepad.current;
+        }
+
+        var leftDevices = new List<XRInputDevice>();
+        InputDevices.GetDevicesAtXRNode(XRNode.LeftHand, leftDevices);
+        if (leftDevices.Count > 0)
+        {
+            leftController = leftDevices[0];
+        }
+
+        var rightDevices = new List<XRInputDevice>();
+        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightDevices);
+        if (rightDevices.Count > 0)
+        {
+            rightController = rightDevices[0];
+        }
+    }
+
+    private bool IsGamepadButtonPressed(InputSystemButtonControl button)
+    {
+        return gamepad != null && button != null && button.ReadValue() >= 0.95f;
+    }
+
+    private bool IsXRButtonPressed(XRInputDevice device, InputFeatureUsage<bool> usage)
+    {
+        bool pressed;
+        return device.isValid && device.TryGetFeatureValue(usage, out pressed) && pressed;
+    }
+
+    private bool IsXRTriggerPressed(XRInputDevice device)
+    {
+        float value;
+        return device.isValid && device.TryGetFeatureValue(XRCommonUsages.trigger, out value) && value >= 0.95f;
+    }
+
+    private bool IsLeftTriggerPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.leftTrigger) ||
+            IsXRTriggerPressed(leftController) || Input.GetKey(KeyCode.LeftArrow);
+    }
+
+    private bool IsRightTriggerPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.rightTrigger) ||
+            IsXRTriggerPressed(rightController) || Input.GetKey(KeyCode.RightArrow);
+    }
+
+    private bool IsLeftPrimaryPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.xButton) ||
+            IsXRButtonPressed(leftController, XRCommonUsages.primaryButton) || Input.GetKey(KeyCode.X);
+    }
+
+    private bool IsLeftSecondaryPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.yButton) ||
+            IsXRButtonPressed(leftController, XRCommonUsages.secondaryButton) || Input.GetKey(KeyCode.Y);
+    }
+
+    private bool IsRightPrimaryPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.aButton) ||
+            IsXRButtonPressed(rightController, XRCommonUsages.primaryButton) || Input.GetKey(KeyCode.A);
+    }
+
+    private bool IsRightSecondaryPressed()
+    {
+        return IsGamepadButtonPressed(gamepad == null ? null : gamepad.bButton) ||
+            IsXRButtonPressed(rightController, XRCommonUsages.secondaryButton) || Input.GetKey(KeyCode.B);
     }
 
     private void getVectorListFromCSV()
@@ -342,7 +426,7 @@ public class ShowTargets : MonoBehaviour
             updateScoreWinPos();
 
             ScoreWindow.SetActive(true);
-            yield return new WaitUntil(() => (gamepad.bButton.ReadValue() >= 0.95f));// Input.GetKeyUp(KeyCode.Space));
+            yield return new WaitUntil(IsRightSecondaryPressed);// Input.GetKeyUp(KeyCode.Space));
             ScoreWindow.SetActive(false);
 
             updateCameraOffset();
@@ -534,7 +618,7 @@ public class ShowTargets : MonoBehaviour
         // wait for monitoring person to press space and for participant to press B
         if (experimentManager.developerMode)
         {
-            yield return new WaitUntil(() => (gamepad.aButton.ReadValue() >= 0.95));
+            yield return new WaitUntil(IsRightPrimaryPressed);
         }
         else
         {
@@ -544,7 +628,7 @@ public class ShowTargets : MonoBehaviour
         yield return null;
         textMesh.text = "Press B to start";
         ScoreWindow.SetActive(true);
-        yield return new WaitUntil(() => (gamepad.bButton.ReadValue() >= 0.95f));
+        yield return new WaitUntil(IsRightSecondaryPressed);
         ScoreWindow.SetActive(false);
 
 
